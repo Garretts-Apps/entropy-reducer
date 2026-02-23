@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "entropy-reducer",
+  "description": "Reduce code entropy — do the same thing with less code, safely",
+  "owner": {
+    "name": "Garrett Eaglin",
+    "url": "https://github.com/Garretts-Apps"
+  },
+  "plugins": [
+    {
+      "name": "entropy-reducer",
+      "description": "Multi-agent plugin that analyzes codebases to find ways to achieve the same functionality with less code. Uses haiku for fast review tasks and sonnet for deep analysis. Always starts in plan mode, never changes UI/UX or language.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Garrett Eaglin",
+        "url": "https://github.com/Garretts-Apps"
+      },
+      "source": "./",
+      "category": "development",
+      "license": "MIT",
+      "repository": "https://github.com/Garretts-Apps/entropy-reducer"
+    }
+  ]
+}
