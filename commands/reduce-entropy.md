@@ -1,7 +1,7 @@
 ---
 description: Analyze codebase for entropy reduction — find ways to do the same thing with less code
 argument-hint: [path]
-allowed-tools: Read, Glob, Grep, Bash, Task, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch
+allowed-tools: Read, Glob, Grep, Bash, Edit, Write, MultiEdit, Task, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch
 model: sonnet
 ---
 
@@ -111,6 +111,16 @@ After all agents complete, compile the final report:
 
 Present this plan to the user via ExitPlanMode. Do NOT execute any changes until the user approves.
 
+### Phase 6: Execute Approved Changes
+Only after the user approves the plan via ExitPlanMode:
+- Apply the APPROVED, UI-cleared reductions using Edit/Write/MultiEdit.
+- Apply changes one finding at a time so each edit maps to a specific plan entry.
+- Skip anything marked RISKY, CAUTION-without-approval, or flagged by the ui-guardian.
+- If tests or a build command exist, run them to confirm behavior is unchanged.
+- Report the actual LOC delta achieved versus the projected delta.
+
+If the user does not approve, stop after presenting the plan. Change nothing.
+
 ## Rules
 
 1. **NEVER use opus model.** Use haiku for review/guardian tasks, sonnet for analysis tasks.
@@ -118,6 +128,6 @@ Present this plan to the user via ExitPlanMode. Do NOT execute any changes until
 3. **NEVER change UI/UX behavior.** If in doubt, exclude the change.
 4. **ALWAYS start in plan mode.** Never modify files without explicit user approval.
 5. **Language-agnostic.** Detect the language and adapt. If unfamiliar, research it first.
-6. When deploying agents via Task tool, set `model: "haiku"` or `model: "sonnet"` explicitly.
-7. Prefer parallel agent deployment where tasks are independent.
-8. Count ACTUAL lines, not estimates. Use `wc -l` or equivalent.
+6. Each agent declares its own model in its frontmatter (haiku or sonnet); deploy it via the Task tool with the matching `subagent_type` and let it inherit that model. Do not request opus.
+7. **Deploy independent agents in parallel** — issue multiple Task calls in a single message so same-phase agents run concurrently.
+8. Count code lines consistently for before/after numbers: prefer `cloc` or `scc` (which exclude blanks and comments) when available, and fall back to `wc -l` otherwise. State which method was used so the savings are reproducible.

@@ -33,7 +33,7 @@ A structured reduction plan showing:
 - Safety audit verdicts
 - Confirmation of zero UI/UX changes
 
-**Always starts in plan mode** — nothing is changed until you approve.
+**Always starts in plan mode** — nothing is changed until you approve. Once you approve, it applies only the safe, UI-cleared reductions and reports the actual LOC saved.
 
 ## Language Support
 

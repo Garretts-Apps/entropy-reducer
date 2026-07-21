@@ -28,7 +28,7 @@ Given a path or set of files, thoroughly review them and produce a structured re
 2. **Read every file** — do not skip any
 3. **Identify the language(s)** and frameworks in use
 4. **If you don't know the language**, use WebSearch to learn its syntax and idioms
-5. **Count lines of code** per file (exclude blank lines and comments where practical)
+5. **Count lines of code** per file — prefer `cloc` or `scc` (which exclude blanks and comments) when available, otherwise fall back to `wc -l`. Note which method you used so the count is reproducible.
 6. **Map the architecture**: what does each file/module do, what depends on what
 
 ## Output Format

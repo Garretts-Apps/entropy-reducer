@@ -53,4 +53,5 @@ The final deliverable is a structured plan showing:
 - Safety audit results
 - Confirmation of zero UI/UX changes
 
-The plan is presented to the user for approval before any changes are made.
+The plan is presented to the user for approval before any changes are made. After approval, the
+command applies only the safe, UI-cleared reductions and reports the actual LOC saved.
