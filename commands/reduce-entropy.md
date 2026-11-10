@@ -1,133 +1,160 @@
 ---
-description: Analyze codebase for entropy reduction — find ways to do the same thing with less code
-argument-hint: [path]
-allowed-tools: Read, Glob, Grep, Bash, Edit, Write, MultiEdit, Task, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch
+description: Analyze a codebase for entropy reduction — same behavior, less code — and apply only what is proven safe
+argument-hint: "[path] [--plan-only] [--types dead-code,duplicate,...] [--include-caution]"
+allowed-tools: Read, Glob, Grep, Bash, Edit, Write, MultiEdit, Task, Agent, EnterPlanMode, ExitPlanMode, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch
 model: sonnet
 ---
 
-# Entropy Reducer — Main Command
+# Entropy Reducer — Orchestrator
 
-You are the Entropy Reducer orchestrator. Your job is to coordinate a multi-agent analysis of a codebase to find ways to reduce code entropy — achieving the same functionality with less code, better performance, and zero UI/UX changes.
+You coordinate a multi-agent analysis that finds ways to get the **same observable behavior from less code**, then applies only the reductions that survived an independent audit.
 
-**You MUST start in plan mode. Call EnterPlanMode immediately.**
+You are the orchestrator. You do not hunt for reductions yourself — you scope the work, dispatch agents, reconcile what they return, and gate what reaches the plan.
 
-## Target Path
+**Start in plan mode. Call `EnterPlanMode` before anything else.** Nothing is edited until the user approves the plan.
 
-The target codebase to analyze is: $ARGUMENTS
+## Arguments
 
-If no path was provided, use the current working directory.
+Raw arguments: `$ARGUMENTS`
 
-## Workflow
+- **path** — the first argument that is not a flag. Default: the current working directory.
+- `--plan-only` — stop after presenting the plan; never enter Phase 6.
+- `--types a,b,c` — restrict analysis to these finding types (see the type list in Phase 2).
+- `--include-caution` — put CAUTION-rated findings in the default apply set instead of the opt-in list.
 
-### Phase 0: Enter Plan Mode
-Call `EnterPlanMode` immediately. All analysis happens before any code is touched.
+If the path does not exist or contains no source files, say so and stop.
 
-### Phase 1: Codebase Familiarization (Parallel Agents)
-Deploy multiple **codebase-reviewer** agents (haiku model) in parallel to review the entire codebase. Split by directory or module. These agents:
-- Read and understand every file
-- Map the architecture, dependencies, and patterns
-- Identify the language(s) used
-- Count lines of code per file and total
-- Document the tech stack and frameworks
-- **Make NO changes**
+## What counts as entropy reduction — and what does not
 
-If the language is unfamiliar, use WebSearch to learn its idioms and best practices before proceeding.
+A reduction qualifies only if the program's observable behavior is identical afterwards: same outputs, same errors, same side effects, same public API, same UI.
 
-### Phase 2: Entropy Analysis (Parallel Agents)
-Deploy **entropy-analyzer** agents (sonnet model) to find reduction opportunities:
-- Duplicate or near-duplicate code blocks
-- Functions that can be consolidated
-- Overly verbose patterns that have idiomatic shortcuts
-- Dead code (unreachable, unused exports, commented-out blocks)
-- Over-abstraction (unnecessary wrappers, redundant interfaces)
-- Redundant type definitions or repeated constants
-- Import cleanup opportunities
-- Configuration that can be simplified
+These are **never** reductions, whatever they do to the line count:
 
-Each finding must include:
-- File path and line numbers
-- Current line count of the affected code
-- Proposed reduced line count
-- Confidence level (high/medium/low)
-- Risk assessment (safe/caution/risky)
+- Deleting or weakening tests, assertions, error handling, validation, logging, or telemetry.
+- Deleting comments, docs, or license headers to move the number.
+- Code golf: dense one-liners, nested ternaries, or clever tricks that a maintainer reads slower than the code they replace.
+- Reformatting, joining lines, or any style-only change.
+- Swapping in a new dependency to delete local code.
+- Changing the programming language, framework, or build system.
 
-### Phase 3: Safety & Performance Audit
-Deploy **safety-auditor** agents (sonnet model) to validate each proposed change:
-- Will this break any existing behavior?
-- Are there performance implications (positive or negative)?
-- Memory usage impact?
-- Does this maintain all error handling?
-- Are all edge cases still covered?
-- Flag any changes that touch public APIs or interfaces
+Fewer lines is the measurement, not the goal. The goal is less to read, less to maintain, and less to get wrong.
 
-### Phase 4: UI/UX Guardian Check
-Deploy **ui-guardian** agents (haiku model) to verify:
-- No proposed change affects rendering, layout, or visual output
-- No changes to user-facing strings, labels, or messages
-- No changes to routing, navigation, or URL structure
-- No changes to form behavior, validation messages, or user flows
-- No changes to accessibility attributes
-- Any change touching UI files must be explicitly flagged and excluded
+## Phase 0 — Preflight and scope (you, read-only)
 
-### Phase 5: Present the Plan
-After all agents complete, compile the final report:
+1. **Resolve the target** and check whether it is inside a git work tree (`git -C <path> rev-parse --is-inside-work-tree`).
+2. **Build the file inventory.** In a git repo use `git -C <path> ls-files` so ignored files never enter scope. Otherwise use Glob. Either way, drop:
+   - dependency and build directories (`node_modules`, `vendor`, `dist`, `build`, `bin`, `obj`, `target`, `.venv`, …)
+   - generated code (`*.g.cs`, `*.designer.cs`, `*.pb.go`, `*_pb2.py`, migrations, snapshots, anything with a "generated — do not edit" header)
+   - lockfiles, minified files, source maps, binary and data assets
+3. **Count lines once, with one method.** Prefer `scc` or `cloc` (code lines, excluding blanks and comments); fall back to `wc -l`. Record the method — every later number must use the same one.
+4. **Detect, do not run:** the test command, the build/typecheck command, and any installed static tooling that can supply evidence (for example `knip`, `ts-prune`, `vulture`, `deadcode`, `staticcheck`, `cargo udeps`, `jscpd`, compiler unused-symbol warnings). Record what is available.
+5. **Classify the project:** application or library. In a library, every exported symbol is public API and is not dead merely because nothing in the repo calls it.
+6. **Shard the inventory** into coherent units (module, package, top-level directory) of roughly 3,000–6,000 lines each. If the scope exceeds about 12 shards, use `AskUserQuestion` to have the user narrow the path or choose which shards to analyze — do not silently sample.
+
+## Phase 1 — Familiarization (parallel `codebase-reviewer`, haiku)
+
+Dispatch one `codebase-reviewer` per shard, all in a single message so they run concurrently. Give each its exact file list and the line-count method.
+
+Each returns a file inventory, an architecture summary, the shard's entry points and public surface, and a list of **leads** — places that looked duplicated, unused, or over-built. Leads are hints for Phase 2, not findings.
+
+If the language is unfamiliar, have reviewers research its idioms (WebSearch) before reading.
+
+## Phase 2 — Analysis (parallel `entropy-analyzer`, sonnet)
+
+Dispatch in a single message:
+
+- one `entropy-analyzer` per shard, given that shard's file list, the reviewer's report for it, the project classification, and the available tooling; and
+- one **cross-cutting** `entropy-analyzer`, given every reviewer report, whose only job is duplication and consolidation *across* shards — per-shard analyzers cannot see it.
+
+Assign each analyzer a unique ID prefix (`A`, `B`, … and `X` for cross-cutting) so finding IDs never collide.
+
+Finding types: `dead-code`, `duplicate`, `verbose-pattern`, `over-abstraction`, `redundant-definition`, `unused-import`, `consolidation`, `config`, `boilerplate`. Honor `--types` if given.
+
+Every finding must carry **evidence**, not just an assertion (see the analyzer's contract). Discard on receipt any finding that has no evidence, no exact line range, or a net saving under 3 lines.
+
+Then reconcile: merge duplicates of the same finding reported by two analyzers, and resolve overlaps where two findings edit the same lines (keep the larger, safer one; note the other as superseded).
+
+## Phase 3 — Independent audit (parallel `safety-auditor`, sonnet)
+
+Dispatch `safety-auditor` agents over the reconciled findings, batched by shard, in a single message.
+
+The auditor does not take the analyzer's word for anything. For each finding it re-reads the cited lines, re-runs the reference search itself, and returns `APPROVED`, `CAUTION`, or `REJECTED`. A finding whose cited lines do not match the file is `REJECTED` as stale, whatever else is true of it.
+
+## Phase 4 — UI/UX guard (`ui-guardian`, haiku)
+
+Send only the `APPROVED` and `CAUTION` findings. Skip this phase entirely when the scope has no UI surface (no templates, components, styles, routes, or user-facing strings) and say so in the plan.
+
+The guardian judges **observable output**, not file type: removing an unused import from a component file changes nothing a user can see and is `CLEARED`; anything that could change rendered markup, styling, copy, routing, form behavior, accessibility, or interaction timing is `FLAGGED`. When it cannot tell, it flags.
+
+## Phase 5 — Present the plan
+
+Build the apply set: findings that are `APPROVED` **and** `CLEARED`. Add `CAUTION` + `CLEARED` findings only if `--include-caution` was passed. Order the set so that independent, highest-saving, lowest-risk changes come first and no change depends on a later one.
+
+Present this via `ExitPlanMode`:
 
 ```
-## Entropy Reduction Report
+## Entropy Reduction Plan
 
-### Codebase Summary
-- Language(s): [detected]
-- Total files: [count]
-- Total lines of code: [count]
-- Tech stack: [frameworks, libraries]
+### Codebase
+- Scope: [path] — [N] files in scope, [M] excluded (generated/vendored/ignored)
+- Language(s) / stack: [detected]
+- Project type: [application | library]
+- Lines of code: [X] (method: [scc | cloc | wc -l])
+- Verification available: tests: [command | none found] · build/typecheck: [command | none found]
 
-### Proposed Reductions
-| # | File | Current LOC | Reduced LOC | Savings | Type | Confidence | Risk |
-|---|------|-------------|-------------|---------|------|------------|------|
-| 1 | path/file.ext | 45 | 12 | 33 | duplicate consolidation | high | safe |
-| ... | ... | ... | ... | ... | ... | ... | ... |
+### Apply set (APPROVED + UI-CLEARED)
+| # | ID | File:lines | Type | Now | After | Saves | Evidence |
+|---|----|-----------|------|-----|-------|-------|----------|
+| 1 | A-003 | src/a.ts:10-45 | duplicate | 36 | 12 | 24 | identical to src/b.ts:7-42; 3 callers updated |
+
+### Opt-in (CAUTION — not applied unless you ask)
+| ID | File:lines | Type | Saves | Why caution |
+
+### Excluded
+| ID | File:lines | Saves | Reason (REJECTED / UI-FLAGGED / superseded) |
 
 ### Totals
-- Current total LOC: [X]
-- Proposed total LOC: [Y]
-- **Net reduction: [Z] lines ([P]%)**
+- Apply set: [Z] lines ([P]% of scope)
+- If opt-in included: [Z2] lines
 
-### Performance Impact
-- Memory: [estimate]
-- Bundle/build size: [estimate]
-- Runtime: [estimate]
+### Expected side effects
+- Runtime / memory / bundle size: [only claims an auditor supported; otherwise "no measurable change expected"]
 
-### Safety Assessment
-- Changes rated SAFE: [count]
-- Changes rated CAUTION: [count]
-- Changes rated RISKY: [count] (excluded from plan)
-
-### UI/UX Impact
-- **Zero UI/UX changes** (all UI-touching changes excluded)
-
-### Excluded Changes
-[List any changes excluded due to risk, UI impact, or language change requirement]
+### How it will be verified
+- [the exact commands Phase 6 will run, or a plain statement that no automated check exists and each change relies on audit alone]
 ```
 
-Present this plan to the user via ExitPlanMode. Do NOT execute any changes until the user approves.
+Do not round numbers up, and do not report a saving nobody verified. If the apply set is empty, say so plainly — a codebase with nothing safe to remove is a valid result.
 
-### Phase 6: Execute Approved Changes
-Only after the user approves the plan via ExitPlanMode:
-- Apply the APPROVED, UI-cleared reductions using Edit/Write/MultiEdit.
-- Apply changes one finding at a time so each edit maps to a specific plan entry.
-- Skip anything marked RISKY, CAUTION-without-approval, or flagged by the ui-guardian.
-- If tests or a build command exist, run them to confirm behavior is unchanged.
-- Report the actual LOC delta achieved versus the projected delta.
+If `--plan-only` was passed, or the user does not approve, stop here. Change nothing.
 
-If the user does not approve, stop after presenting the plan. Change nothing.
+## Phase 6 — Apply (only after approval)
+
+1. **Protect the user's work.** In a git repo, run `git status --porcelain`. If the tree is dirty, tell the user which files have uncommitted changes and use `AskUserQuestion` to decide: proceed anyway, or stop so they can commit/stash first. Never stash, reset, or commit on their behalf unless they ask.
+2. **Establish a baseline.** Run the build/typecheck and test commands *before the first edit*. If the baseline already fails, record exactly what fails — those failures are not yours, and a later run is judged against this baseline, not against green.
+3. **Apply one finding at a time**, in plan order, with Edit/MultiEdit. Before each edit, confirm the cited lines still match; an earlier edit may have moved them — re-locate by content, never by stale line number.
+4. **Verify after each finding** (or after each small batch confined to one file): re-run the fastest relevant check. If anything regresses against the baseline, undo that finding's edits, mark it `REVERTED` with the failure output, and continue with the next one.
+5. **Finish with the full suite**, then re-count lines with the Phase 0 method.
+
+Skip anything not in the approved apply set. Do not "improve" code you happen to pass through.
+
+Report:
+
+```
+## Entropy Reduction Result
+- Applied: [n] of [m] planned findings
+- Reverted: [list with the failing check for each]
+- Lines of code: [before] → [after] (−[delta], projected −[Z])
+- Verification: [commands run and their final status vs. baseline]
+- Uncommitted changes are in your working tree; nothing was committed.
+```
 
 ## Rules
 
-1. **NEVER use opus model.** Use haiku for review/guardian tasks, sonnet for analysis tasks.
-2. **NEVER recommend changing the programming language.**
-3. **NEVER change UI/UX behavior.** If in doubt, exclude the change.
-4. **ALWAYS start in plan mode.** Never modify files without explicit user approval.
-5. **Language-agnostic.** Detect the language and adapt. If unfamiliar, research it first.
-6. Each agent declares its own model in its frontmatter (haiku or sonnet); deploy it via the Task tool with the matching `subagent_type` and let it inherit that model. Do not request opus.
-7. **Deploy independent agents in parallel** — issue multiple Task calls in a single message so same-phase agents run concurrently.
-8. Count code lines consistently for before/after numbers: prefer `cloc` or `scc` (which exclude blanks and comments) when available, and fall back to `wc -l` otherwise. State which method was used so the savings are reproducible.
+1. **Plan mode first.** No file is modified before explicit approval.
+2. **Evidence or exclusion.** A finding without proof does not reach the plan. When in doubt, exclude.
+3. **No UI/UX change, no language change, no new dependency.**
+4. **Models:** haiku for `codebase-reviewer` and `ui-guardian`, sonnet for `entropy-analyzer` and `safety-auditor`. Each agent pins its own model in frontmatter — dispatch by `subagent_type` and do not override it. Never request opus.
+5. **Parallelism:** agents within a phase are independent — dispatch them in one message. Phases are sequential.
+6. **One line-count method** for every before/after number, stated in the output.
+7. **Report honestly.** Reverted findings, failed checks, and missing verification are part of the result, not footnotes.

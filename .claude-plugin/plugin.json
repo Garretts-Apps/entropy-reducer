@@ -1,7 +1,7 @@
 {
   "name": "entropy-reducer",
-  "version": "1.0.0",
-  "description": "Reduce code entropy — do the same thing with less code, safely. Multi-agent analysis that finds redundancy, dead code, and simplification opportunities without changing UI/UX or language.",
+  "version": "1.1.0",
+  "description": "Reduce code entropy — do the same thing with less code, safely. Multi-agent analysis that finds redundancy, dead code, and simplification opportunities, proves each one, and applies only what survives an independent audit. Never changes UI/UX or language.",
   "author": {
     "name": "Garrett Eaglin",
     "url": "https://github.com/Garretts-Apps"

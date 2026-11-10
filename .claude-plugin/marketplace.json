@@ -9,8 +9,8 @@
   "plugins": [
     {
       "name": "entropy-reducer",
-      "description": "Multi-agent plugin that analyzes codebases to find ways to achieve the same functionality with less code. Uses haiku for fast review tasks and sonnet for deep analysis. Always starts in plan mode, never changes UI/UX or language.",
-      "version": "1.0.0",
+      "description": "Multi-agent plugin that finds ways to get the same behavior from less code. Every finding carries evidence, is independently audited, and is verified against a test baseline when applied. Always starts in plan mode; never changes UI/UX or language. Uses haiku for fast passes and sonnet for analysis.",
+      "version": "1.1.0",
       "author": {
         "name": "Garrett Eaglin",
         "url": "https://github.com/Garretts-Apps"
