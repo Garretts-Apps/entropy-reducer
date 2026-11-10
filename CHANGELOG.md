@@ -27,6 +27,10 @@ Reworked the workflow so that what reaches the plan is proven rather than assert
 - Added `scripts/validate.py` and a CI workflow that checks manifests, frontmatter, and
   version consistency.
 - README install instructions now use the real marketplace name.
+- Agent and skill descriptions are short what-plus-when statements; the multi-line
+  example blocks are gone (agents are dispatched by name, so they only cost context).
+- The plugin version is declared once, in `plugin.json`.
+- `allowed-tools` lists current tool names; CI also runs `claude plugin validate`.
 
 ## 1.0.0
 

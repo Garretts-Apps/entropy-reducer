@@ -2,7 +2,8 @@
 """Validate the entropy-reducer plugin layout. Stdlib only.
 
 Checks the invariants that break silently when edited by hand:
-  * manifests parse, and plugin.json / marketplace.json agree on name + version
+  * manifests parse, plugin.json / marketplace.json agree on the name, and the
+    version is declared once (plugin.json)
   * every agent has frontmatter whose name matches its filename, a description,
     a pinned model from the allowed set, and a tools list
   * the command and skill have the frontmatter Claude Code needs
@@ -60,9 +61,13 @@ def main() -> int:
     for field in ("name", "version"):
         if not plugin.get(field):
             fail(f"plugin.json: missing {field}")
-        if plugin.get(field) != entry.get(field):
-            fail(f"{field} mismatch: plugin.json={plugin.get(field)!r} "
-                 f"marketplace.json={entry.get(field)!r}")
+    if plugin.get("name") != entry.get("name"):
+        fail(f"name mismatch: plugin.json={plugin.get('name')!r} "
+             f"marketplace.json={entry.get('name')!r}")
+    # The version lives in plugin.json only. When the marketplace entry
+    # repeats it, Claude Code silently uses plugin.json and the two drift.
+    if "version" in entry:
+        fail("marketplace.json: remove `version` from the plugin entry; plugin.json owns it")
     if not re.fullmatch(r"\d+\.\d+\.\d+", str(plugin.get("version", ""))):
         fail(f"plugin.json: version {plugin.get('version')!r} is not semver")
 
@@ -75,6 +80,9 @@ def main() -> int:
             fail(f"{rel}: name {fm.get('name')!r} does not match filename")
         if not fm.get("description"):
             fail(f"{rel}: empty description")
+        elif len(fm["description"]) > 300:
+            fail(f"{rel}: description is {len(fm['description'])} chars (max 300); "
+                 "agent descriptions are loaded into every session")
         if fm.get("model") not in ALLOWED_MODELS:
             fail(f"{rel}: model {fm.get('model')!r} not in {sorted(ALLOWED_MODELS)}")
         if not fm.get("tools"):

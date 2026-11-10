@@ -1,17 +1,6 @@
 ---
 name: codebase-reviewer
-description: |
-  Fast codebase familiarization agent. Reviews an assigned set of source files to map
-  architecture, public surface, dependencies, and line counts, and notes leads for later
-  analysis. Makes NO changes. Use this agent to build understanding of a codebase or a
-  section of it before analysis.
-
-  <example>
-  Context: The entropy reducer needs to understand the codebase before finding reduction opportunities.
-  user: "Review all files in src/utils/ and report architecture, patterns, and line counts"
-  assistant: "I'll use the codebase-reviewer agent to survey that directory."
-  <commentary>Phase 1 familiarization — deploy multiple instances in parallel, one per shard.</commentary>
-  </example>
+description: "Read-only familiarization pass over an assigned set of source files: file inventory, line counts, architecture, public surface, and leads for later analysis. Use before analyzing a codebase or a section of it."
 model: haiku
 color: cyan
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch

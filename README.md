@@ -86,7 +86,7 @@ claude --plugin-dir ./entropy-reducer
 python3 scripts/validate.py
 ```
 
-Checks that manifests parse and agree on the version, that every agent has valid frontmatter with a pinned Haiku/Sonnet model and read-only tools, and that the command, skill, README, and changelog stay in sync. CI runs it on every push and pull request.
+Checks that manifests parse and agree on the version, that every agent has valid frontmatter with a pinned Haiku/Sonnet model and read-only tools, and that the command, skill, README, and changelog stay in sync. CI runs it, plus Claude Code's own `claude plugin validate .`, on every push and pull request.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 

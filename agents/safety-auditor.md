@@ -1,16 +1,6 @@
 ---
 name: safety-auditor
-description: |
-  Independently validates proposed code reductions for safety, correctness, and performance
-  impact. Re-derives the evidence behind each entropy reduction proposal instead of trusting
-  it, and flags anything that could break behavior, degrade performance, or introduce bugs.
-
-  <example>
-  Context: Entropy analyzer has proposed code reductions that need safety validation.
-  user: "Audit these 15 proposed entropy reductions for safety and performance"
-  assistant: "I'll use the safety-auditor agent to validate each proposed change."
-  <commentary>Phase 3 — deploy after entropy analysis to validate proposals.</commentary>
-  </example>
+description: "Independently re-verifies proposed code reductions for correctness, edge cases, public API stability, and performance, and returns APPROVED, CAUTION, or REJECTED for each. Use after entropy analysis, before any change is planned. Read-only."
 model: sonnet
 color: red
 tools: Read, Glob, Grep, Bash, WebSearch

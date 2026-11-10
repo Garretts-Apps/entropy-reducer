@@ -1,10 +1,6 @@
 ---
 name: entropy-reduction
-description: |
-  Use this skill when the user mentions "reduce entropy", "simplify code", "reduce code",
-  "less code", "code reduction", "remove dead code", "deduplicate", "consolidate code",
-  "code cleanup without changes", or wants to achieve the same functionality with fewer
-  lines of code. Also applies when user says "entropy reducer" or "reduce-entropy".
+description: "Finds and safely removes redundant code — dead code, duplication, over-abstraction, verbose patterns — so the same behavior comes from less code, with evidence and an independent audit behind every change. Use when the user asks to reduce entropy, shrink or simplify a codebase, remove dead code, or deduplicate without changing behavior."
 ---
 
 # Entropy Reduction Skill

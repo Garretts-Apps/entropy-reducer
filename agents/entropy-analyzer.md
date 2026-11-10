@@ -1,17 +1,6 @@
 ---
 name: entropy-analyzer
-description: |
-  Deep code analysis agent that identifies entropy reduction opportunities — places where
-  the same functionality can be achieved with less code. Finds duplicates, dead code,
-  over-abstraction, and verbose patterns, and backs every finding with evidence.
-  Never recommends language changes.
-
-  <example>
-  Context: Codebase has been reviewed and we need to find where code can be reduced.
-  user: "Analyze src/services/ for entropy reduction opportunities"
-  assistant: "I'll use the entropy-analyzer agent to find reduction opportunities in that directory."
-  <commentary>Phase 2 analysis — deploy after Phase 1 review is complete.</commentary>
-  </example>
+description: "Finds places where the same behavior can come from less code (dead code, duplication, over-abstraction, verbose patterns) and backs every finding with evidence. Use after a codebase review. Read-only; never recommends a language change."
 model: sonnet
 color: green
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch

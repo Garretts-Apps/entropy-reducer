@@ -1,7 +1,7 @@
 ---
 description: Analyze a codebase for entropy reduction — same behavior, less code — and apply only what is proven safe
 argument-hint: "[path] [--plan-only] [--types dead-code,duplicate,...] [--include-caution]"
-allowed-tools: Read, Glob, Grep, Bash, Edit, Write, MultiEdit, Task, Agent, EnterPlanMode, ExitPlanMode, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch
+allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Task, EnterPlanMode, ExitPlanMode, AskUserQuestion, WebSearch, WebFetch
 model: sonnet
 ---
 
@@ -132,7 +132,7 @@ If `--plan-only` was passed, or the user does not approve, stop here. Change not
 
 1. **Protect the user's work.** In a git repo, run `git status --porcelain`. If the tree is dirty, tell the user which files have uncommitted changes and use `AskUserQuestion` to decide: proceed anyway, or stop so they can commit/stash first. Never stash, reset, or commit on their behalf unless they ask.
 2. **Establish a baseline.** Run the build/typecheck and test commands *before the first edit*. If the baseline already fails, record exactly what fails — those failures are not yours, and a later run is judged against this baseline, not against green.
-3. **Apply one finding at a time**, in plan order, with Edit/MultiEdit. Before each edit, confirm the cited lines still match; an earlier edit may have moved them — re-locate by content, never by stale line number.
+3. **Apply one finding at a time**, in plan order, with Edit. Before each edit, confirm the cited lines still match; an earlier edit may have moved them — re-locate by content, never by stale line number.
 4. **Verify after each finding** (or after each small batch confined to one file): re-run the fastest relevant check. If anything regresses against the baseline, undo that finding's edits, mark it `REVERTED` with the failure output, and continue with the next one.
 5. **Finish with the full suite**, then re-count lines with the Phase 0 method.
 

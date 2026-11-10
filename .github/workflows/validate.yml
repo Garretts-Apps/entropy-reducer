@@ -18,3 +18,10 @@ jobs:
           python-version: "3.x"
       - name: Validate plugin layout
         run: python3 scripts/validate.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate with Claude Code
+        run: |
+          npm install --global --no-fund --no-audit @anthropic-ai/claude-code
+          claude plugin validate .

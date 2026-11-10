@@ -1,16 +1,6 @@
 ---
 name: ui-guardian
-description: |
-  Ensures no proposed code changes affect UI/UX. Checks each proposal for any observable
-  effect on rendering, layout, user-facing strings, routing, forms, accessibility, or
-  visual output. Any change that could alter what a user sees or does is flagged for exclusion.
-
-  <example>
-  Context: We have a list of approved entropy reductions that need UI/UX impact verification.
-  user: "Check these proposed changes for any UI/UX impact"
-  assistant: "I'll use the ui-guardian agent to verify zero UI/UX impact."
-  <commentary>Phase 4 — final check before presenting plan to user.</commentary>
-  </example>
+description: "Checks proposed code changes for any observable effect on UI/UX (markup, styling, copy, routing, forms, accessibility, timing) and flags anything that could change what a user sees or does. Use as the last gate before a reduction plan. Read-only."
 model: haiku
 color: yellow
 tools: Read, Glob, Grep
