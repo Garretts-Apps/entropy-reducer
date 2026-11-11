@@ -27,7 +27,11 @@ Fewer lines is how the result is measured, not the goal. The goal is less to rea
 | `--types` | Restrict to finding types: `dead-code`, `duplicate`, `consolidation`, `verbose-pattern`, `over-abstraction`, `redundant-definition`, `unused-import`, `config`, `boilerplate`. |
 | `--include-caution` | Include CAUTION-rated findings in the apply set (they are opt-in otherwise). |
 
+Installed as a plugin, the full name is `/entropy-reducer:reduce-entropy`. You can also just ask — "reduce entropy in `src/`", "remove the dead code here" — and Claude starts the same workflow.
+
 ## How it works
+
+The whole workflow is one skill, [`skills/reduce-entropy/SKILL.md`](skills/reduce-entropy/SKILL.md), which orchestrates the four agents in [`agents/`](agents/):
 
 | Phase | Agent | Model | What happens |
 |-------|-------|-------|--------------|
@@ -86,7 +90,26 @@ claude --plugin-dir ./entropy-reducer
 python3 scripts/validate.py
 ```
 
-Checks that manifests parse and agree on the version, that every agent has valid frontmatter with a pinned Haiku/Sonnet model and read-only tools, and that the command, skill, README, and changelog stay in sync. CI runs it, plus Claude Code's own `claude plugin validate .`, on every push and pull request.
+Checks that the manifests parse and the version is declared once, that every agent has valid frontmatter with a pinned Haiku/Sonnet model and read-only tools, and that the skill, README, and changelog stay in sync. CI runs it, plus Claude Code's own `claude plugin validate .`, on every push and pull request.
+
+### Evals
+
+`evals/` holds an end-to-end suite for [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals). The cases run the workflow against a small fixture app with seeded entropy; [`evals/fixture/README.md`](evals/fixture/README.md) is the answer key.
+
+| Case | Asserts |
+|------|---------|
+| `plan-finds-dead-code-and-duplicate` | the apply set names the dead function and the duplicated helper in both files |
+| `plan-keeps-dynamically-referenced-function` | a function reached only through `getattr` is not in the apply set |
+| `plan-excludes-ui-change` | two render functions whose markup differs are not merged |
+| `skill-triggers` | a plain-language request invokes the skill |
+
+```bash
+claude plugin eval . --scaffold --ablation none -j 2
+```
+
+`--scaffold` lets each case copy the fixture into its workspace. `--ablation none` skips the no-plugin baseline, which means little for cases that call the skill by name. The three plan cases use `--plan-only` and are granted read-only tools, so nothing is edited. Graders are regexes and a tool-call check; none calls a judge model. `skill-triggers` is capped at four turns on purpose: it only checks that the skill fires, so its run ends with a "maximum number of turns" note and still passes.
+
+**Every run makes real model calls on your account.** Each plan case is a full multi-agent run. Cases run once by default; pass `--runs 3` for a steadier score at three times the cost. The evals are not part of CI because they need credentials. Reports go to `evals/results/`, which is git-ignored.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 

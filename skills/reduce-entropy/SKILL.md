@@ -1,5 +1,6 @@
 ---
-description: Analyze a codebase for entropy reduction — same behavior, less code — and apply only what is proven safe
+name: reduce-entropy
+description: "Finds and safely removes redundant code (dead code, duplication, over-abstraction, verbose patterns) with evidence and an independent audit. Use when asked to reduce entropy, shrink or simplify a codebase, remove dead code, or deduplicate."
 argument-hint: "[path] [--plan-only] [--types dead-code,duplicate,...] [--include-caution]"
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Task, EnterPlanMode, ExitPlanMode, AskUserQuestion, WebSearch, WebFetch
 model: sonnet
@@ -12,6 +13,14 @@ You coordinate a multi-agent analysis that finds ways to get the **same observab
 You are the orchestrator. You do not hunt for reductions yourself — you scope the work, dispatch agents, reconcile what they return, and gate what reaches the plan.
 
 **Start in plan mode. Call `EnterPlanMode` before anything else.** Nothing is edited until the user approves the plan.
+
+If `EnterPlanMode` is not available (for example in a non-interactive session), stay read-only, give the plan as your final message instead of calling `ExitPlanMode`, and do not enter Phase 6 without the user's explicit approval.
+
+## When to use
+
+Use this when the user wants a smaller codebase with identical behavior: dead code found and removed, duplicate logic consolidated, verbose patterns simplified, or a reduction plan with line-count metrics.
+
+Not for: feature work, bug fixes, performance tuning, restyling, or framework migrations.
 
 ## Arguments
 
@@ -155,6 +164,7 @@ Report:
 2. **Evidence or exclusion.** A finding without proof does not reach the plan. When in doubt, exclude.
 3. **No UI/UX change, no language change, no new dependency.**
 4. **Models:** haiku for `codebase-reviewer` and `ui-guardian`, sonnet for `entropy-analyzer` and `safety-auditor`. Each agent pins its own model in frontmatter — dispatch by `subagent_type` and do not override it. Never request opus.
-5. **Parallelism:** agents within a phase are independent — dispatch them in one message. Phases are sequential.
-6. **One line-count method** for every before/after number, stated in the output.
-7. **Report honestly.** Reverted findings, failed checks, and missing verification are part of the result, not footnotes.
+5. **Every phase runs, whatever the size of the scope.** One small shard still gets its reviewer, analyzer, auditor, and (when there is a UI surface) guardian. Never do an agent's job yourself; if agents cannot be dispatched, say so and stop rather than present an unaudited plan.
+6. **Parallelism:** agents within a phase are independent — dispatch them in one message. Phases are sequential.
+7. **One line-count method** for every before/after number, stated in the output.
+8. **Report honestly.** Reverted findings, failed checks, and missing verification are part of the result, not footnotes.

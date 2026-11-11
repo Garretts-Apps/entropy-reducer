@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+- **The workflow is now a skill.** `commands/reduce-entropy.md` and the pointer skill
+  `skills/entropy-reduction/` are merged into `skills/reduce-entropy/SKILL.md`. Invocation
+  is unchanged: `/reduce-entropy` (`/entropy-reducer:reduce-entropy`), or a plain request
+  such as "remove the dead code here".
+- **End-to-end evals.** `evals/` has a fixture app with seeded entropy and four
+  `claude plugin eval` cases: the plan finds the dead function and the duplicate, keeps a
+  dynamically referenced function, leaves UI markup alone, and the skill triggers on a
+  plain-language request. See the README for how to run them; each run costs model usage.
+- **Two workflow fixes the evals exposed.** Every phase's agents now run however small the
+  scope is (the orchestrator used to do the analysis itself on a small codebase and present
+  an unaudited plan), and when plan mode is unavailable, as in a non-interactive session,
+  the workflow stays read-only and gives the plan as its final message.
+- `scripts/validate.py` checks the skill instead of the command, and fails if a stale
+  command or pointer skill reappears.
+
 ## 1.1.0
 
 Reworked the workflow so that what reaches the plan is proven rather than asserted.

@@ -6,9 +6,11 @@ Checks the invariants that break silently when edited by hand:
     version is declared once (plugin.json)
   * every agent has frontmatter whose name matches its filename, a description,
     a pinned model from the allowed set, and a tools list
-  * the command and skill have the frontmatter Claude Code needs
-  * every agent the command dispatches exists, and every agent is dispatched
-  * the README documents the current version's command and agents
+  * the reduce-entropy skill (the whole workflow) has the frontmatter Claude
+    Code needs, and no stale command or pointer skill sits beside it
+  * every agent is dispatched by the skill
+  * the README documents /reduce-entropy and every agent, and the changelog
+    has an entry for the current version
 
 Exit 0 when everything holds, 1 otherwise.
 """
@@ -92,31 +94,40 @@ def main() -> int:
     if not agents:
         fail("agents/: no agents found")
 
-    command_path = ROOT / "commands" / "reduce-entropy.md"
-    command = command_path.read_text(encoding="utf-8") if command_path.is_file() else ""
-    if not command:
-        fail("commands/reduce-entropy.md missing")
-    else:
-        fm = frontmatter(command_path)
-        for field in ("description", "allowed-tools"):
-            if not fm.get(field):
-                fail(f"commands/reduce-entropy.md: missing {field}")
-        for tool in ("EnterPlanMode", "ExitPlanMode"):
-            if tool not in fm.get("allowed-tools", ""):
-                fail(f"commands/reduce-entropy.md: allowed-tools lacks {tool}")
-        if fm.get("model") not in ALLOWED_MODELS:
-            fail(f"commands/reduce-entropy.md: model {fm.get('model')!r} not allowed")
-        for name in agents:
-            if name not in command:
-                fail(f"agent {name} is never dispatched by the command")
-
-    skill_path = ROOT / "skills" / "entropy-reduction" / "SKILL.md"
-    if not skill_path.is_file():
-        fail("skills/entropy-reduction/SKILL.md missing")
+    skill_rel = "skills/reduce-entropy/SKILL.md"
+    skill_path = ROOT / skill_rel
+    skill = skill_path.read_text(encoding="utf-8") if skill_path.is_file() else ""
+    if not skill:
+        fail(f"{skill_rel} missing")
     else:
         fm = frontmatter(skill_path)
-        if fm.get("name") != "entropy-reduction" or not fm.get("description"):
-            fail("skills/entropy-reduction/SKILL.md: needs name + description")
+        # The directory name is the invocation name: /entropy-reducer:reduce-entropy.
+        if fm.get("name") != skill_path.parent.name:
+            fail(f"{skill_rel}: name {fm.get('name')!r} does not match its directory")
+        for field in ("description", "allowed-tools"):
+            if not fm.get(field):
+                fail(f"{skill_rel}: missing {field}")
+        if len(fm.get("description", "")) > 250:
+            fail(f"{skill_rel}: description is {len(fm['description'])} chars (max 250); "
+                 "skill descriptions are loaded into every session")
+        for tool in ("EnterPlanMode", "ExitPlanMode"):
+            if tool not in fm.get("allowed-tools", ""):
+                fail(f"{skill_rel}: allowed-tools lacks {tool}")
+        if fm.get("model") not in ALLOWED_MODELS:
+            fail(f"{skill_rel}: model {fm.get('model')!r} not allowed")
+        # README promises natural-language triggering, so the model must be
+        # able to invoke the skill.
+        if fm.get("disable-model-invocation", "false").lower() == "true":
+            fail(f"{skill_rel}: disable-model-invocation must stay off")
+        for name in agents:
+            if name not in skill:
+                fail(f"agent {name} is never dispatched by the skill")
+
+    # The workflow lives in the skill only; a leftover command or pointer
+    # skill would register a second, diverging /reduce-entropy.
+    for stale in ("commands/reduce-entropy.md", "skills/entropy-reduction"):
+        if (ROOT / stale).exists():
+            fail(f"{stale}: remove it; the workflow lives in {skill_rel}")
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for needle in ["/reduce-entropy", *agents]:
@@ -133,7 +144,7 @@ def main() -> int:
     if errors:
         return 1
     print(f"OK    entropy-reducer {plugin['version']}: "
-          f"{len(agents)} agents, 1 command, 1 skill")
+          f"{len(agents)} agents, 1 skill")
     return 0
 
 
